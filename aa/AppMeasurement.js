@@ -51,6 +51,9 @@ function s_doPlugins() {
    // カテゴリ
    setAACategory();
 
+   // 商品詳細
+   setAAProduct();
+
 }
 s.doPlugins=s_doPlugins
 
@@ -106,8 +109,9 @@ function setAADataTop() {
 function setAASearchResult() {
    if (location.pathname !== "/" || !location.search.match(/^[¥?]s=.*/)) return;
    const productList = document.getElementsByClassName("products-block-post-template");
+   s.prop10 = getQueryParam("s");
    s.events = !!productList.length? "event1": "event2";
-   s.channel = "Shop";
+   s.channel = "SearchResult";
    // ここでは検索キーワードを取得しない
    //　１商品しかヒットしない場合、直接商品詳細へ行くため
    //　検索ボタン押下時にキーワードを保持
@@ -116,10 +120,59 @@ function setAASearchResult() {
 /**
  * Adobe PV設定 - カテゴリ
  */
-function setAASearchResult() {
+function setAACategory() {
    if (location.pathname.indexOf("/product-category/") === -1) return;
    s.channel = "Category";
+   setAABreadCrumbData();
 }
+
+/**
+ * Adobe PV設定 - 商品詳細
+ */
+function setAAProduct() {
+   if (location.pathname.indexOf("/product/") === -1) return;
+   s.channel = "Product";
+
+   // TODO 検索が１件ヒットで直接きた場合の処理を書く - event1, prop10
+   setAABreadCrumbData();
+   setAAProductsData();
+}
+
+/**
+ * Adobe prop11,12設定（カテゴリ）
+ */
+function setAABreadCrumbData() {
+   const breadcrumbTexts = document.querySelector(".woocommerce-breadcrumb").textContent;
+   const aryBC = breadcrumbTexts.split("/");
+   if(!!aryBC[1].trim()) {
+      s.prop11 = aryBC[1].trim();
+      s.eVar11 = "D=c11";
+   }
+   if(!!aryBC[2].trim()) {
+      s.prop12 = aryBC[2].trim();
+      s.eVar12 = "D=c12";
+   }
+}
+
+/**
+ * Adobe prop13, prodView設定（商品名、products）
+ */
+function setAAProductsData() {
+   const itemNameEl = document.querySelector(".wp-block-post-title");
+   s.prop13 = itemNameEl.textContent.trim();
+   s.eVar13 = "D=c13";
+
+   const qtyEl = document.querySelector(".quantity .qty");
+   const amountEl = document.querySelector(".amount");
+   const priceSymbol = amountEl.querySelector(".woocommerce-Price-currencySymbol");
+   const price = Number(amountEl.textContent.replace(priceSymbol.textContent, "").trim());
+   const subTotal = price * Number(qtyEl.value);
+
+   s.events = "prodView";
+   s.products = `${s.prop12 || ""};${s.prop13};${qtyEl.value};${subTotal}`;
+}
+
+
 
 
 /************************** PLUGINS SECTION *************************/
