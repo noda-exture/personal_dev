@@ -38,6 +38,19 @@ s.trackingServer="noda.sc.omtrdc.net"
 s.usePlugins=true
 
 function s_doPlugins() {
+
+   setAADataCommon();
+
+    
+
+
+}
+s.doPlugins=s_doPlugins
+
+/**
+ * Adobe 共通画面設定
+ */
+function setAADataCommon() {
 	s.pageName = getPageName();
    s.campaign = getQueryParam("cid");
    s.server = location.hostname;
@@ -53,11 +66,24 @@ function s_doPlugins() {
       s.prop5 = _ppvPreviousPage;
       s.prop6 = _ppvHighestPercentViewed;
    }
-    
 
+   const splitedPathName = location.pathname.split("/");
+   if (!!splitedPathName[1]) s.prop7 = splitedPathName[1];
+   if (!!splitedPathName[2]) s.prop8 = splitedPathName[2];
+   if (!!splitedPathName[3]) s.prop9 = splitedPathName[3];
 
+   s.eVar1 = "D=c1";
+   s.eVar2 = "D=c2";
+   s.eVar3 = "D=c3";
+   s.eVar4 = "D=c4";
+   s.eVar5 = "D=c5";
+   s.eVar6 = "D=c6";
+   s.eVar7 = "D=c7";
+   s.eVar8 = "D=c8";
+   s.eVar9 = "D=c9";
 }
-s.doPlugins=s_doPlugins
+
+
 /************************** PLUGINS SECTION *************************/
 
 /******************************************* BEGIN CODE TO DEPLOY *******************************************/
