@@ -39,19 +39,28 @@ s.usePlugins=true
 
 function s_doPlugins() {
 
+   // 共通設定
    setAADataCommon();
 
+   // TOP
+   setAADataTop();
     
+   // 検索結果
+   setAASearchResult();
 
+   // カテゴリ
+   setAACategory();
 
 }
 s.doPlugins=s_doPlugins
 
 /**
- * Adobe 共通画面設定
+ * Adobe PV設定 - 共通
  */
 function setAADataCommon() {
-	s.pageName = getPageName();
+   const pageNamePrms = "s,post_type,reset-link-sent,show-reset-form,password-reset";
+   // TOPページと検索結果画面を別画面扱いする
+	s.pageName = getPageName("", pageNamePrms);
    s.campaign = getQueryParam("cid");
    s.server = location.hostname;
 
@@ -81,6 +90,35 @@ function setAADataCommon() {
    s.eVar7 = "D=c7";
    s.eVar8 = "D=c8";
    s.eVar9 = "D=c9";
+}
+
+/**
+ * Adobe PV設定 - Top
+ */
+function setAADataTop() {
+   if (location.pathname !== "/") return;
+   s.channel = "Top";
+}
+
+/**
+ * Adobe PV設定 - 検索結果
+ */
+function setAASearchResult() {
+   if (location.pathname !== "/" || !location.search.match(/^[¥?]s=.*/)) return;
+   const productList = document.getElementsByClassName("products-block-post-template");
+   s.events = !!productList.length? "event1": "event2";
+   s.channel = "Shop";
+   // ここでは検索キーワードを取得しない
+   //　１商品しかヒットしない場合、直接商品詳細へ行くため
+   //　検索ボタン押下時にキーワードを保持
+}
+
+/**
+ * Adobe PV設定 - カテゴリ
+ */
+function setAASearchResult() {
+   if (location.pathname.indexOf("/product-category/") === -1) return;
+   s.channel = "Category";
 }
 
 
