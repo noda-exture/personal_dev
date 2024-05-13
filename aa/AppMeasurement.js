@@ -48,17 +48,23 @@ function s_doPlugins() {
    // 検索結果
    setAASearchResult();
 
+   // ショップ
+   setAAShop();
+
    // カテゴリ
    setAACategory();
 
    // 商品詳細
    setAAProduct();
 
+   // カート
+   setAACart();
+
 }
 s.doPlugins=s_doPlugins
 
 /**
- * Adobe PV設定 - 共通
+ * Adobe 共通設定
  */
 function setAADataCommon() {
    const pageNamePrms = "s,post_type,reset-link-sent,show-reset-form,password-reset";
@@ -66,6 +72,9 @@ function setAADataCommon() {
 	s.pageName = getPageName("", pageNamePrms);
    s.campaign = getQueryParam("cid");
    s.server = location.hostname;
+
+   // Home / EC 以外の設定を追加する場合を想定して関数化（例：Blog等）
+   setAAChannel();
 
    s.prop1 = document.title;
    s.prop2 = "D=g";
@@ -96,46 +105,82 @@ function setAADataCommon() {
 }
 
 /**
- * Adobe PV設定 - Top
+ * Adobe Top設定
  */
 function setAADataTop() {
    if (location.pathname !== "/") return;
-   s.channel = "Top";
 }
 
 /**
- * Adobe PV設定 - 検索結果
+ * Adobe 検索結果設定
  */
 function setAASearchResult() {
    if (location.pathname !== "/" || !location.search.match(/^[¥?]s=.*/)) return;
    const productList = document.getElementsByClassName("products-block-post-template");
    s.prop10 = getQueryParam("s");
    s.events = !!productList.length? "event1": "event2";
-   s.channel = "SearchResult";
    // ここでは検索キーワードを取得しない
    //　１商品しかヒットしない場合、直接商品詳細へ行くため
    //　検索ボタン押下時にキーワードを保持
 }
 
 /**
- * Adobe PV設定 - カテゴリ
+ * Adobe ショップ設定
+ */
+function setAAShop() {
+   if (location.pathname !== "/shop/") return;
+   s.prop14 = s.getQueryParam("orderby");
+   s.eVar14 = "D=c14";
+}
+
+/**
+ * Adobe カテゴリ設定
  */
 function setAACategory() {
    if (location.pathname.indexOf("/product-category/") === -1) return;
-   s.channel = "Category";
    setAABreadCrumbData();
 }
 
 /**
- * Adobe PV設定 - 商品詳細
+ * Adobe 商品詳細設定
  */
 function setAAProduct() {
    if (location.pathname.indexOf("/product/") === -1) return;
-   s.channel = "Product";
 
    // TODO 検索が１件ヒットで直接きた場合の処理を書く - event1, prop10
    setAABreadCrumbData();
    setAAProductsData();
+}
+
+/**
+ * Adobe カート設定
+ */
+function setAACart() {
+   if (location.pathname.indexOf("/cart/") === -1) return;
+
+   s.event = "scView";
+   // categoryは出力されていないため未設定
+   const cartItemBlocks = [...document.querySelectorAll(".wc-block-cart-items .wc-block-cart-items__row")];
+   const productsData = cartItemBlocks.map((el) => {
+      const itemNameEl = el.querySelector(".wc-block-components-product-name");
+      const amountEl = el.querySelector(".wc-block-formatted-money-amount");
+      const price = getNumberOnly(amountEl.textContent);
+      const qtyEl = el.querySelector(".wc-block-components-quantity-selector__input");
+      const subTotal = price * Number(qtyEl.value);
+      return `;${itemNameEl.textContent};${qtyEl.value};${subTotal}`;
+   });
+   s.products = productsData.join(",");
+}
+
+/**
+ * Adobe チャンネル設定
+ */
+function setAAChannel() {
+   if (location.hostname === "/") {
+      s.channel = "Home";
+   } else {
+      s.channel = "EC";
+   }
 }
 
 /**
@@ -164,16 +209,12 @@ function setAAProductsData() {
 
    const qtyEl = document.querySelector(".quantity .qty");
    const amountEl = document.querySelector(".amount");
-   const priceSymbol = amountEl.querySelector(".woocommerce-Price-currencySymbol");
-   const price = Number(amountEl.textContent.replace(priceSymbol.textContent, "").trim());
+   const price = getNumberOnly(amountEl.textContent);
    const subTotal = price * Number(qtyEl.value);
 
    s.events = "prodView";
    s.products = `${s.prop12 || ""};${s.prop13};${qtyEl.value};${subTotal}`;
 }
-
-
-
 
 /************************** PLUGINS SECTION *************************/
 
@@ -229,6 +270,17 @@ function getLPad(val,  digit, word = "0") {
        linkage += word;
    }
    return (linkage + val).slice(-1 * digit);
+ }
+
+ /**
+  * 数値と文字列が混在した文字列から数値のみ取得する
+  * 数値部分がない場合、0を返却
+  * @param {String} trgt 数値と文字列が混在した文字列
+  * @returns {Number} 数値
+  */
+ function getNumberOnly(trgt) {
+   const replaced = trgt.replace(/[^0-9]/g, '');
+   return replaced? Number(replaced): 0;
  }
 /*
 
