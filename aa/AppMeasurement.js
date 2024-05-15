@@ -60,6 +60,12 @@ function s_doPlugins() {
    // カート
    setAACart();
 
+   // 支払い
+   setAACheckout();
+
+   //　注文完了
+   setAAPurchase();
+
 }
 s.doPlugins=s_doPlugins
 
@@ -158,7 +164,7 @@ function setAAProduct() {
 function setAACart() {
    if (location.pathname.indexOf("/cart/") === -1) return;
 
-   s.event = "scView";
+   s.events = "scView";
    // categoryは出力されていないため未設定
    const cartItemBlocks = [...document.querySelectorAll(".wc-block-cart-items .wc-block-cart-items__row")];
    const productsData = cartItemBlocks.map((el) => {
@@ -170,6 +176,48 @@ function setAACart() {
       return `;${itemNameEl.textContent};${qtyEl.value};${subTotal}`;
    });
    s.products = productsData.join(",");
+}
+
+/**
+ * Adobe 支払い設定
+ */
+function setAACheckout() {
+   // TODO SP時、Reactで動的に生成される項目のためPV時では取得できない。別途手を考える
+   s.events = "scCheckout";
+   const checkoutItems = [...document.querySelectorAll(".wc-block-components-order-summary__content .wc-block-components-order-summary-item")];
+   const productsData = checkoutItems.map((el) => {
+      const itemNameEl = el.querySelector(".wc-block-components-product-name");
+      const amountEl = el.querySelector(".wc-block-formatted-money-amount");
+      const price = getNumberOnly(amountEl.textContent);
+      const qtyEl = el.querySelector(".wc-block-components-order-summary-item__quantity > span");
+      const subTotal = price * Number(qtyEl.textContent);
+      return `;${itemNameEl.textContent};${qtyEl.textContent};${subTotal}`;
+   });
+   s.products = productsData.join(",");
+}
+
+/**
+ * Adobe 注文完了
+ */
+function setAAPurchase() {
+   s.events = "purchase";
+   s.prop15 = getQueryParam("key");
+   s.eVar15 = "D=c15";
+   const orderInfos = [...document.querySelectorAll(".wc-block-order-confirmation-summary-list-item")];
+   const purchaseEl = orderInfos.find((block) => block.textContent.indexOf("注文番号") !== -1);
+   s.purchaseID = purchaseEl.querySelector(".wc-block-order-confirmation-summary-list-item__value").textContent.trim();
+   const orderItems = [...document.querySelectorAll(".order_item")];
+   const productsData = orderItems.map((el) => {
+      const itemNameEl = el.querySelector("a");
+      const amountEl = el.querySelector(".amount");
+      const price = getNumberOnly(amountEl.textContent);
+      const qtyEl = el.querySelector(".product-quantity");
+      const qty = Number(getNumberOnly(qtyEl.textContent));
+      const subTotal = price * qty;
+      return `;${itemNameEl.textContent};${qty};${subTotal}`;
+   });
+   s.products = productsData.join(",");
+
 }
 
 /**
