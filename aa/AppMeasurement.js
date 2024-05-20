@@ -182,6 +182,7 @@ function setAACart() {
  * Adobe 支払い設定
  */
 function setAACheckout() {
+   if (location.pathname !== "/checkout/") return;
    // TODO SP時、Reactで動的に生成される項目のためPV時では取得できない。別途手を考える
    s.events = "scCheckout";
    const checkoutItems = [...document.querySelectorAll(".wc-block-components-order-summary__content .wc-block-components-order-summary-item")];
@@ -200,6 +201,7 @@ function setAACheckout() {
  * Adobe 注文完了
  */
 function setAAPurchase() {
+   if (location.pathname.indexOf("/checkout/order-received/") === -1) return;
    s.events = "purchase";
    s.prop15 = getQueryParam("key");
    s.eVar15 = "D=c15";
