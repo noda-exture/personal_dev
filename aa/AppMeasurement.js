@@ -39,6 +39,9 @@ s.usePlugins=true
 
 function s_doPlugins() {
 
+   // clickイベントのevent等を上書きしないためにPV系の値設定をするか判定
+   if (s.linkTrackVars !== "None") return;
+
    // 共通設定
    setAADataCommon();
 
@@ -68,6 +71,11 @@ function s_doPlugins() {
 
 }
 s.doPlugins=s_doPlugins
+
+// Event設定
+setAADataCommonEvents();
+setAADataCheckoutEvents();
+setAAProductEvents();
 
 /**
  * Adobe 共通設定
@@ -109,7 +117,27 @@ function setAADataCommon() {
    s.eVar8 = "D=c8";
    s.eVar9 = "D=c9";
 
-   setAADataCommonEvents();
+}
+
+const itemRemove = ((e) => {
+   const self = e.currentTarget;
+   const btnText = self.getAttribute("aria-label");
+   const parentTr = self.closest("tr");
+   s.eVar31 = parentTr.querySelector(".wc-block-components-product-name").textContent.trim();
+   s.eVar32 = getNumberOnly(parentTr.querySelector(".wc-block-cart-item__prices").textContent);
+   s.events = "scRemove";
+   s.linkTrackVars = "events,eVar31,eVar32";
+   s.linkTrackEvents = "scRemove";
+
+   s.tl(true,"o",btnText);
+});
+
+function setRemoveCart(e) {
+   const removeBtns = [...document.querySelectorAll(".wc-block-cart-item__remove-link")];
+   removeBtns.forEach((btn) => {
+      btn.removeEventListener("click", itemRemove);
+      btn.addEventListener("click", itemRemove);
+   });
 }
 
 /**
@@ -117,8 +145,36 @@ function setAADataCommon() {
  */
 function setAADataCommonEvents() {
 
+   // 一覧系のカート追加ボタン
+   const listCartBtns = [...document.querySelectorAll(".add_to_cart_button")];
+   listCartBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+         const self = e.currentTarget;
+         const linkText = self.getAttribute("aria-label");
+         s.eVar30 = self.dataset.product_id;
+         const parentLI = self.closest("li");
+         s.eVar31 = parentLI.querySelector(".wp-block-post-title").textContent.trim();
+         s.eVar32 = getNumberOnly(parentLI.querySelector(".amount").textContent);
+         s.linkTrackVars = "events,eVar30,eVar31,eVar32";
+         s.linkTrackEvents = "scAdd";
+         s.events = "scAdd";
+         
+         const miniCartBadge = document.querySelector(".wc-block-mini-cart__badge");
+         if (!miniCartBadge.textContent) {
+            s.events = apl(s.events,"scOpen");
+            s.linkTrackEvents = apl(s.linkTrackEvents,"scOpen");
+         }
+         
+         s.tl(true,"o",linkText);
+      });
+   });
+   
+   //　ヘッダー・フッター共通イベント
+   const judgeHeader = document.querySelector(".wc-blocks-pattern-header-essential");
+   if (!judgeHeader) return;
+
    // SP メニューを開く
-   const spNav = document.querySelector(".wp-block-navigation__responsive-container-open ");
+   const spNav = document.querySelector(".wp-block-navigation__responsive-container-open");
    spNav.addEventListener("click", (e) => {
       s.events = "event3";
       s.linkTrackVars = "events";
@@ -129,16 +185,72 @@ function setAADataCommonEvents() {
    // ヘッダー・フッターリンク
    const headerLinks = [...document.querySelectorAll(".wp-block-navigation-item__content")];
    headerLinks.forEach((link) => {
-   link.addEventListener("click", (e) => {
-      const self = e.currentTarget;
-      const areaTxt = self.closest("header")? "Header": "Footer";
-      s.tl(true,"o",`${areaTxt}-${self.textContent.trim()}`);
+      link.addEventListener("click", (e) => {
+         const self = e.currentTarget;
+         const areaTxt = self.closest("header")? "Header": "Footer";
+         s.tl(true,"o",`${areaTxt}-${self.textContent.trim()}`);
+      });
    });
 
-   //　TODO ミニショッピングカートはscView対象なのか確認
+   // ミニカートクリック
+   const miniCartBtn = document.querySelector(".wc-block-mini-cart");
+   miniCartBtn.addEventListener("click", (e) => {
+      s.events = "event4";
+      s.linkTrackVars = "events";
+      s.linkTrackEvents = "event4";
+      s.tl(true,"o","ミニショッピングカート - クリック");
+   });
 
-});
+   const bodyObserver = new MutationObserver(setRemoveCart);
+   bodyObserver.observe(document.body, {childList: true, subtree: true});
 
+   // フッター検索
+   const searchBtn = document.querySelector("button.wp-block-search__button");
+   searchBtn.addEventListener("click", (e) => {
+      const input = document.querySelector("input.wp-block-search__input");
+      setCookieSearchValue(input.value);
+      s.tl(true,"o",`click - ${e.currentTarget.getAttribute("aria-label")}`);
+   });
+   
+}
+
+function setCookieSearchValue(val) {
+   document.cookie = `search_product=${val};path=/;${val? "":"max-age=0"}`;
+}
+
+/**
+ * Adobe 支払い設定 - イベント
+ */
+function setAADataCheckoutEvents() {
+   if (location.pathname !== "/checkout/") return;
+   setRemoveCart();
+}
+
+/**
+ * Adobe 商品詳細設定 - イベント
+ */
+function setAAProductEvents() {
+   if (location.pathname.indexOf("/product/") === -1) return;
+   const cartBtn = document.querySelector(".single_add_to_cart_button");
+   cartBtn.addEventListener("click", (e) => {
+      const self = e.currentTarget;
+
+      s.eVar30 = self.value;
+      s.eVar31 = document.querySelector("h1.wp-block-post-title").textContent.trim();
+      s.eVar32 = getNumberOnly(document.querySelector("h1 + div .amount").textContent);
+     s.events = "scAdd";
+     
+      s.linkTrackVars = "events,eVar30,eVar31,eVar32";
+      s.linkTrackEvents = "scAdd";      
+      
+      const miniCartBadge = document.querySelector(".wc-block-mini-cart__badge");
+      if (!miniCartBadge.textContent) {
+         s.events = apl(s.events,"scOpen");
+         s.linkTrackEvents = apl(s.linkTrackEvents,"scOpen");
+      }
+      
+      s.tl(true,"o","商品ページ - カート追加");
+   });
 }
 
 /**
@@ -156,9 +268,8 @@ function setAASearchResult() {
    const productList = document.getElementsByClassName("products-block-post-template");
    s.prop10 = getQueryParam("s");
    s.events = !!productList.length? "event1": "event2";
-   // ここでは検索キーワードを取得しない
-   //　１商品しかヒットしない場合、直接商品詳細へ行くため
-   //　検索ボタン押下時にキーワードを保持
+   //　検索クリック時のクッキーをリセット
+   setCookieSearchValue();
 }
 
 /**
@@ -166,7 +277,7 @@ function setAASearchResult() {
  */
 function setAAShop() {
    if (location.pathname !== "/shop/") return;
-   s.prop14 = s.getQueryParam("orderby");
+   s.prop14 = getQueryParam("orderby");
    s.eVar14 = "D=c14";
 }
 
@@ -184,7 +295,14 @@ function setAACategory() {
 function setAAProduct() {
    if (location.pathname.indexOf("/product/") === -1) return;
 
-   // TODO 検索が１件ヒットで直接きた場合の処理を書く - event1, prop10
+   const searchVal = getCookieValue("search_product");
+   setCookieSearchValue();
+   if (!!searchVal) {
+      s.events = "event1";
+      s.prop10 = searchVal;
+      s.eVar10 = "D=c10";
+   }
+
    setAABreadCrumbData();
    setAAProductsData();
 }
@@ -367,6 +485,25 @@ function getLPad(val,  digit, word = "0") {
    const replaced = trgt.replace(/[^0-9]/g, '');
    return replaced? Number(replaced): 0;
  }
+
+ /**
+ * クッキーの値を取得する
+ * @param trgt cookie name
+ * @returns cookie value
+ */
+function getCookieValue(trgt) {
+   var cks = document.cookie.split(";");
+   var ret = "";
+   for (var i = 0; i < cks.length; i++) {
+       var ck = cks[i].split("=");
+       if (ck[0].trim() === trgt) {
+           ret = ck[1].trim();
+           break;
+       }
+   }
+   return ret;
+ }
+
 /*
 
  Start ActivityMap Module
